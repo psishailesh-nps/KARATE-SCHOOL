@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fees - Jetpur Karate Team ERP</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+.page{padding:24px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}.toolbar input,.toolbar select,.form-grid input,.form-grid select,.form-grid textarea{padding:10px;border:1px solid #ddd;border-radius:8px}.toolbar input{flex:1;min-width:220px}.btn{padding:10px 15px;border:0;border-radius:8px;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:11px;border-bottom:1px solid #eee;text-align:left}.badge{padding:4px 8px;border-radius:999px;background:#e8f5e9}.pending{background:#fff3cd}.partial{background:#e0f2fe}.summary{display:flex;gap:12px;flex-wrap:wrap}.card{padding:14px 20px;border:1px solid #eee;border-radius:10px;min-width:130px}.modal{display:none;position:fixed;inset:0;background:#0006;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modal-card{background:#fff;border-radius:12px;padding:22px;max-width:650px;width:100%;max-height:90vh;overflow:auto}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid textarea{grid-column:1/-1;min-height:70px}.close{float:right;background:none;border:0;font-size:22px}.actions{display:flex;gap:8px;margin-top:15px}@media(max-width:650px){.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+<h1>Fees Management</h1><p>Manage student fees and payments using browser Local Storage.</p>
+<div class="summary"><div class="card">Total Fees<br><b id="total">₹0</b></div><div class="card">Collected<br><b id="paid">₹0</b></div><div class="card">Pending<br><b id="pending">₹0</b></div></div>
+<div class="toolbar"><input id="search" placeholder="Search student or receipt"><select id="filter"><option value="">All Status</option><option>Paid</option><option>Partial</option><option>Pending</option><option>Cancelled</option></select><button class="btn primary" onclick="openForm()">+ Add Fee</button></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Receipt</th><th>Student</th><th>Period</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+<div id="modal" class="modal"><div class="modal-card"><button class="close" onclick="closeForm()">×</button><h2 id="title">Add Fee</h2>
+<form id="form"><input type="hidden" id="id"><div class="form-grid">
+<select id="student" required><option value="">Select Student *</option></select>
+<input id="receipt" placeholder="Receipt No. (auto)">
+<input id="period" placeholder="Fee Period e.g. Sep 2026" required>
+<input id="amount" type="number" min="0" step="0.01" placeholder="Total Amount *" required>
+<input id="paidAmount" type="number" min="0" step="0.01" placeholder="Paid Amount" value="0">
+<input id="date" type="date" required>
+<select id="method"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Other</option></select>
+<select id="status2"><option>Paid</option><option>Partial</option><option>Pending</option><option>Cancelled</option></select>
+<textarea id="notes" placeholder="Notes"></textarea>
+</div><div class="actions"><button class="btn primary">Save Fee</button><button type="button" class="btn" onclick="closeForm()">Cancel</button></div>
+</form></div></div>
+<script>
+const KEY='jkt_fees',SK='jkt_students';
+function students(){return JSON.parse(localStorage.getItem(SK)||'[]')}
+function data(){return JSON.parse(localStorage.getItem(KEY)||'[]')}
+function save(a){localStorage.setItem(KEY,JSON.stringify(a));render()}
+function studentName(id){let s=students().find(x=>String(x.id)===String(id));return s?s.first_name+' '+(s.last_name||''):'Unknown'}
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}
+function render(){let q=search.value.toLowerCase(),f=filter.value,a=data();let total=0,paid=0;a.forEach(x=>{if(x.status!=='Cancelled'){total+=Number(x.amount||0);paid+=Number(x.paid||0)}});document.getElementById('total').textContent=money(total);document.getElementById('paid').textContent=money(paid);document.getElementById('pending').textContent=money(total-paid);
+let list=a.filter(x=>(!f||x.status===f)&&((x.receipt+' '+studentName(x.student_id)).toLowerCase().includes(q)));document.getElementById('rows').innerHTML=list.map(x=>{let bal=Math.max(0,Number(x.amount||0)-Number(x.paid||0));return '<tr><td>'+esc(x.receipt)+'</td><td>'+esc(studentName(x.student_id))+'</td><td>'+esc(x.period)+'</td><td>'+money(x.amount)+'</td><td>'+money(x.paid)+'</td><td>'+money(bal)+'</td><td><span class="badge '+x.status.toLowerCase()+'">'+x.status+'</span></td><td><button class="btn" onclick="edit('+x.id+')">Edit</button> <button class="btn" onclick="receipt('+x.id+')">Receipt</button> <button class="btn danger" onclick="del('+x.id+')">Delete</button></td></tr>}).join('')||'<tr><td colspan="8">No fee records found.</td></tr>'}
+function fillStudents(selected){student.innerHTML='<option value="">Select Student *</option>'+students().filter(s=>s.status!=='Inactive').map(s=>'<option value="'+s.id+'">'+esc(s.student_code+' - '+s.first_name+' '+(s.last_name||''))+'</option>').join('');if(selected)student.value=selected}
+function openForm(x){form.reset();fillStudents(x?.student_id);id.value=x?.id||'';title.textContent=x?'Edit Fee':'Add Fee';date.value=x?.date||new Date().toISOString().slice(0,10);if(x){receipt.value=x.receipt;period.value=x.period;amount.value=x.amount;paidAmount.value=x.paid;method.value=x.method;status2.value=x.status;notes.value=x.notes||''}else{receipt.value='REC-'+String(data().length+1).padStart(4,'0')}modal.classList.add('show')}
+function closeForm(){modal.classList.remove('show')}
+function edit(i){let x=data().find(v=>v.id==i);openForm(x)}
+function del(i){if(confirm('Delete this fee record?'))save(data().filter(x=>x.id!=i))}
+form.onsubmit=e=>{e.preventDefault();let a=data(),total=Number(amount.value||0),p=Math.min(total,Math.max(0,Number(paidAmount.value||0)));let st=total===0?'Pending':p>=total?'Paid':p>0?'Partial':'Pending';let x={id:id.value?Number(id.value):Date.now(),student_id:student.value,receipt:receipt.value.trim()||'REC-'+String(a.length+1).padStart(4,'0'),period:period.value.trim(),amount:total,paid:p,date:date.value,method:method.value,status:status2.value==='Cancelled'?'Cancelled':st,notes:notes.value.trim()};let i=a.findIndex(v=>v.id==x.id);i>=0?a[i]=x:a.push(x);localStorage.setItem(KEY,JSON.stringify(a));closeForm();render()}
+function receipt(i){let x=data().find(v=>v.id==i);let bal=Math.max(0,Number(x.amount)-Number(x.paid));let w=window.open('','_blank','width=600,height=700');w.document.write('<html><head><title>Fee Receipt '+esc(x.receipt)+'</title><style>body{font-family:Arial;padding:35px}h1{text-align:center}table{width:100%;border-collapse:collapse}td{padding:10px;border-bottom:1px solid #ddd}.right{text-align:right}</style></head><body><h1>JETPUR KARATE TEAM</h1><h3 style="text-align:center">FEE RECEIPT</h3><table><tr><td>Receipt No.</td><td class="right">'+esc(x.receipt)+'</td></tr><tr><td>Student</td><td class="right">'+esc(studentName(x.student_id))+'</td></tr><tr><td>Period</td><td class="right">'+esc(x.period)+'</td></tr><tr><td>Total Fee</td><td class="right">'+money(x.amount)+'</td></tr><tr><td>Paid</td><td class="right">'+money(x.paid)+'</td></tr><tr><td>Balance</td><td class="right">'+money(bal)+'</td></tr><tr><td>Payment Method</td><td class="right">'+esc(x.method)+'</td></tr><tr><td>Date</td><td class="right">'+esc(x.date)+'</td></tr></table><p style="margin-top:60px">Authorized Signature: __________________</p><script>window.print()<\/script></body></html>');w.document.close()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+search.oninput=render;filter.onchange=render;render();
+</script></body></html>
