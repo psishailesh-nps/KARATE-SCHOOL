@@ -4,7 +4,7 @@ const native=window.localStorage, API='api/store.php';
 let serverReady=false;
 try{
  const x=new XMLHttpRequest(); x.open('GET',API,false); x.send();
- if(x.status===200){const r=JSON.parse(x.responseText);if(r.success&&r.data){Object.keys(r.data).forEach(k=>native.setItem(k,r.data[k]));serverReady=true;}}
+ if(x.status===200){const r=JSON.parse(x.responseText);if(r.success&&r.data){Object.keys(r.data).forEach(k=>native.setItem(k,r.data[k]));serverReady=true;}}else if(x.status===401){const p=location.pathname.split('/').pop()||'index.html';if(!['index.html','student-parent.html','coach-portal.html'].includes(p)) location.href='index.html';}
 }catch(_){}
 const bridge={
  get length(){return native.length;}, key(i){return native.key(i);}, getItem(k){return native.getItem(k);},
