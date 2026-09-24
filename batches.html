@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Batches - Jetpur Karate Team</title><link rel="stylesheet" href="assets/css/style.css"></head>
+<body><div class="content" style="max-width:1100px;margin:auto">
+<div class="page-title"><div><h2>Batches</h2><div class="muted">Local Storage batch management</div></div><button class="btn btn-primary" style="width:auto" onclick="openBatch()">+ Add Batch</button></div>
+<div id="msg"></div><div class="card"><div class="toolbar"><input id="search" placeholder="Search batch..." oninput="render()"><select id="statusFilter" onchange="render()"><option value="">All Status</option><option>Active</option><option>Inactive</option></select></div>
+<table class="table"><thead><tr><th>Code</th><th>Batch Name</th><th>Day</th><th>Time</th><th>Coach</th><th>Status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div id="modal" class="login hide" style="position:fixed;inset:0;background:#0008"><div class="login-card" style="max-width:620px"><h2 id="modalTitle">Add Batch</h2><input type="hidden" id="id">
+<div class="cards" style="grid-template-columns:1fr 1fr">
+<div class="field"><label>Batch Name *</label><input id="name"></div><div class="field"><label>Code</label><input id="code" placeholder="Auto"></div>
+<div class="field"><label>Days</label><input id="days" placeholder="Mon, Wed, Fri"></div><div class="field"><label>Start Time</label><input id="start_time" type="time"></div>
+<div class="field"><label>End Time</label><input id="end_time" type="time"></div><div class="field"><label>Coach</label><input id="coach" placeholder="Coach name"></div>
+<div class="field"><label>Capacity</label><input id="capacity" type="number" min="1"></div><div class="field"><label>Status</label><select id="batch_status"><option>Active</option><option>Inactive</option></select></div>
+</div><div class="field"><label>Notes</label><input id="notes"></div>
+<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeBatch()">Cancel</button><button class="btn btn-primary" style="width:auto" onclick="saveBatch()">Save Batch</button></div></div></div>
+<script>
+const KEY='jkt_batches';let batches=[];
+const $=id=>document.getElementById(id);
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function init(){batches=JSON.parse(localStorage.getItem(KEY)||'null');if(!Array.isArray(batches)){batches=[{id:1,code:'BAT-001',name:'Morning A',days:'Mon, Wed, Fri',start_time:'06:00',end_time:'07:00',coach:'',capacity:30,status:'Active',notes:''},{id:2,code:'BAT-002',name:'Evening A',days:'Mon, Wed, Fri',start_time:'18:00',end_time:'19:00',coach:'',capacity:30,status:'Active',notes:''},{id:3,code:'BAT-003',name:'Morning B',days:'Tue, Thu, Sat',start_time:'07:00',end_time:'08:00',coach:'',capacity:30,status:'Active',notes:''},{id:4,code:'BAT-004',name:'Evening B',days:'Tue, Thu, Sat',start_time:'19:00',end_time:'20:00',coach:'',capacity:30,status:'Active',notes:''}];persist()}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(batches))}
+function render(){let q=$('search').value.toLowerCase(),st=$('statusFilter').value;let list=batches.filter(b=>(!q||(b.name+' '+b.code+' '+b.coach).toLowerCase().includes(q))&&(!st||b.status===st));$('rows').innerHTML=list.map(b=>'<tr><td>'+esc(b.code)+'</td><td><b>'+esc(b.name)+'</b></td><td>'+esc(b.days)+'</td><td>'+esc(b.start_time)+' - '+esc(b.end_time)+'</td><td>'+esc(b.coach||'-')+'</td><td><span class="badge">'+esc(b.status)+'</span></td><td><button class="btn" onclick="editBatch('+b.id+')">Edit</button> <button class="btn" onclick="deleteBatch('+b.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="7">No batches found.</td></tr>'}
+function openBatch(){ $('modalTitle').innerText='Add Batch';$('id').value='';['name','code','days','start_time','end_time','coach','capacity','notes'].forEach(x=>$(x).value='');$('batch_status').value='Active';$('modal').classList.remove('hide')}
+function editBatch(id){let b=batches.find(x=>x.id===id);if(!b)return;openBatch();$('modalTitle').innerText='Edit Batch';$('id').value=b.id;['name','code','days','start_time','end_time','coach','capacity','notes'].forEach(x=>$(x).value=b[x]??'');$('batch_status').value=b.status}
+function closeBatch(){$('modal').classList.add('hide')}
+function saveBatch(){let id=Number($('id').value),old=batches.find(x=>x.id===id),name=$('name').value.trim();if(!name){alert('Batch name is required');return}let b={id:id||Date.now(),code:$('code').value.trim()||(old?.code||('BAT-'+String(Date.now()).slice(-5))),name,days:$('days').value.trim(),start_time:$('start_time').value,end_time:$('end_time').value,coach:$('coach').value.trim(),capacity:Number($('capacity').value)||30,status:$('batch_status').value,notes:$('notes').value.trim()};if(id)batches=batches.map(x=>x.id===id?b:x);else batches.push(b);persist();closeBatch();notice(id?'Batch updated successfully':'Batch added successfully');render()}
+function deleteBatch(id){let b=batches.find(x=>x.id===id);if(!b)return;let students=JSON.parse(localStorage.getItem('jkt_students')||'[]');let used=students.filter(s=>String(s.batch_id)===String(id));if(used.length&&!confirm(b.name+' is assigned to '+used.length+' student(s). Delete anyway?'))return;if(confirm('Delete '+b.name+'?')){batches=batches.filter(x=>x.id!==id);persist();notice('Batch deleted successfully');render()}}
+function notice(t){$('msg').innerHTML='<div class="card" style="margin-bottom:12px">'+esc(t)+'</div>';setTimeout(()=>{$('msg').innerHTML=''},2500)}
+init();render();
+</script></body></html>
