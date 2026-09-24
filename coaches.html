@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coaches - Jetpur Karate Team ERP</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+.page{padding:24px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}.toolbar input,.toolbar select,.form-grid input,.form-grid select,.form-grid textarea{padding:10px;border:1px solid #ddd;border-radius:8px}.toolbar input{flex:1;min-width:220px}.btn{padding:10px 15px;border:0;border-radius:8px;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:12px;border-bottom:1px solid #eee;text-align:left}.badge{padding:4px 8px;border-radius:999px;background:#e8f5e9}.inactive{background:#f1f1f1}.modal{display:none;position:fixed;inset:0;background:#0006;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modal-card{background:#fff;border-radius:12px;padding:22px;max-width:700px;width:100%;max-height:90vh;overflow:auto}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid textarea{grid-column:1/-1;min-height:80px}.actions{display:flex;gap:8px}.close{float:right;background:none;border:0;font-size:22px}@media(max-width:650px){.form-grid{grid-template-columns:1fr}}
+</style>
+</head><body>
+<div class="page"><h1>Coaches</h1><p>Manage karate coaches using browser Local Storage.</p>
+<div class="toolbar"><input id="search" placeholder="Search coach name, mobile or code"><select id="status"><option value="">All Status</option><option>Active</option><option>Inactive</option></select><button class="btn primary" onclick="openForm()">+ Add Coach</button></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Code</th><th>Name</th><th>Mobile</th><th>Specialization</th><th>Experience</th><th>Status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div id="modal" class="modal"><div class="modal-card"><button class="close" onclick="closeForm()">×</button><h2 id="title">Add Coach</h2>
+<form id="form"><input type="hidden" id="id"><div class="form-grid">
+<input id="code" placeholder="Coach Code (auto)" ><input id="name" placeholder="Coach Name *" required>
+<input id="mobile" placeholder="Mobile"><input id="email" type="email" placeholder="Email">
+<input id="specialization" placeholder="Specialization / Dan Grade"><input id="experience" type="number" min="0" placeholder="Experience (years)">
+<select id="status2"><option>Active</option><option>Inactive</option></select><input id="joining" type="date">
+<textarea id="address" placeholder="Address"></textarea><textarea id="notes" placeholder="Notes"></textarea>
+</div><div class="actions" style="margin-top:15px"><button class="btn primary">Save Coach</button><button type="button" class="btn" onclick="closeForm()">Cancel</button></div></form></div></div>
+<script>
+const KEY='jkt_coaches';
+function data(){let x=JSON.parse(localStorage.getItem(KEY)||'[]');if(!x.length){x=[{id:Date.now(),code:'COA-001',name:'Rajesh Patel',mobile:'',email:'',specialization:'Black Belt / Instructor',experience:8,status:'Active',joining:'',address:'',notes:''},{id:Date.now()+1,code:'COA-002',name:'Amit Shah',mobile:'',email:'',specialization:'Black Belt',experience:5,status:'Active',joining:'',address:'',notes:''}];localStorage.setItem(KEY,JSON.stringify(x))}return x}
+function save(x){localStorage.setItem(KEY,JSON.stringify(x));render()}
+function render(){let q=document.getElementById('search').value.toLowerCase(),s=document.getElementById('status').value;let a=data().filter(x=>(!s||x.status===s)&&[x.code,x.name,x.mobile].join(' ').toLowerCase().includes(q));document.getElementById('rows').innerHTML=a.map(x=>'<tr><td>'+esc(x.code)+'</td><td>'+esc(x.name)+'</td><td>'+esc(x.mobile||'-')+'</td><td>'+esc(x.specialization||'-')+'</td><td>'+esc(x.experience||0)+' yrs</td><td><span class="badge '+(x.status==='Inactive'?'inactive':'')+'">'+x.status+'</span></td><td><button class="btn" onclick="edit('+x.id+')">Edit</button> <button class="btn danger" onclick="del('+x.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="7">No coaches found.</td></tr>'}
+function openForm(x){document.getElementById('form').reset();document.getElementById('id').value=x?.id||'';document.getElementById('title').textContent=x?'Edit Coach':'Add Coach';if(x)for(let k of ['code','name','mobile','email','specialization','experience','joining','address','notes'])document.getElementById(k).value=x[k]??'';document.getElementById('status2').value=x?.status||'Active';document.getElementById('modal').classList.add('show')}
+function closeForm(){document.getElementById('modal').classList.remove('show')}
+function edit(id){let x=data().find(v=>v.id==id);openForm(x)}
+function del(id){if(confirm('Delete this coach?'))save(data().filter(x=>x.id!=id))}
+document.getElementById('form').onsubmit=e=>{e.preventDefault();let a=data(),id=document.getElementById('id').value,x={id:id?Number(id):Date.now(),code:document.getElementById('code').value.trim()||'COA-'+String(a.length+1).padStart(3,'0'),name:document.getElementById('name').value.trim(),mobile:document.getElementById('mobile').value.trim(),email:document.getElementById('email').value.trim(),specialization:document.getElementById('specialization').value.trim(),experience:document.getElementById('experience').value, status:document.getElementById('status2').value,joining:document.getElementById('joining').value,address:document.getElementById('address').value.trim(),notes:document.getElementById('notes').value.trim()};let i=a.findIndex(v=>v.id==x.id);i>=0?a[i]=x:a.push(x);save(a);closeForm()};
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+search.oninput=render;status.onchange=render;render();
+</script></body></html>
