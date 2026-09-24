@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reports & Dashboard - Jetpur Karate Team ERP</title><link rel="stylesheet" href="assets/css/style.css">
+<style>
+.page{padding:24px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:20px 0}.card{padding:18px;border:1px solid #eee;border-radius:12px;background:#fff}.card b{font-size:25px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.toolbar select,.toolbar input{padding:10px;border:1px solid #ddd;border-radius:8px}.btn{padding:10px 15px;border:0;border-radius:8px;cursor:pointer}.primary{background:#2563eb;color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{border:1px solid #eee;border-radius:12px;padding:18px;background:#fff}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:10px;border-bottom:1px solid #eee;text-align:left}.bar{height:18px;background:#eee;border-radius:10px;overflow:hidden;margin:7px 0 15px}.bar i{display:block;height:100%;background:#2563eb}.muted{color:#666}@media(max-width:750px){.grid{grid-template-columns:1fr}}
+</style></head>
+<body><div class="page">
+<h1>Reports & Dashboard</h1><p>Live summary from Local Storage modules.</p>
+<div class="toolbar"><input id="from" type="date"><input id="to" type="date"><button class="btn primary" onclick="render()">Apply Date</button><button class="btn" onclick="window.print()">Print Report</button></div>
+<div class="cards">
+<div class="card">Students<br><b id="students">0</b></div><div class="card">Active Students<br><b id="active">0</b></div><div class="card">Coaches<br><b id="coaches">0</b></div><div class="card">Batches<br><b id="batches">0</b></div><div class="card">Attendance<br><b id="attendance">0</b></div><div class="card">Fees Collected<br><b id="fees">₹0</b></div><div class="card">Pending Fees<br><b id="due">₹0</b></div><div class="card">Achievements<br><b id="achievements">0</b></div></div>
+<div class="grid">
+<div class="panel"><h2>🥋 Belt Distribution</h2><div id="belts"></div></div>
+<div class="panel"><h2>📋 Attendance Summary</h2><div id="att"></div></div>
+<div class="panel"><h2>💰 Fee Summary</h2><div id="feeTable"></div></div>
+<div class="panel"><h2>🏆 Tournament Medals</h2><div id="medals"></div></div>
+<div class="panel"><h2>📝 Exam Results</h2><div id="exams"></div></div>
+<div class="panel"><h2>📅 Recent Admissions</h2><div id="recent"></div></div>
+</div></div>
+<script>
+const get=k=>JSON.parse(localStorage.getItem(k)||'[]'), money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2}), esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function inRange(d){let f=from.value,t=to.value;return (!f||d>=f)&&(!t||d<=t)}
+function render(){let s=get('jkt_students'),c=get('jkt_coaches'),b=get('jkt_batches'),f=get('jkt_fees'),p=get('jkt_belt_promotions'),e=get('jkt_exams'),t=get('jkt_tournaments'),a={};students.textContent=s.length;active.textContent=s.filter(x=>x.status==='Active').length;coaches.textContent=c.length;batches.textContent=b.length;achievements.textContent=t.filter(x=>inRange(x.date)).length;
+let total=0,paid=0;f.filter(x=>x.status!=='Cancelled'&&inRange(x.date)).forEach(x=>{total+=+x.amount||0;paid+=+x.paid||0});fees.textContent=money(paid);due.textContent=money(Math.max(0,total-paid));
+let bc={};s.forEach(x=>{let z=x.belt||'White Belt';bc[z]=(bc[z]||0)+1});belts.innerHTML=Object.keys(bc).map(k=>k+' <b>'+bc[k]+'</b><div class="bar"><i style="width:'+Math.round(bc[k]/Math.max(1,s.length)*100)+'%"></i></div>').join('')||'<span class="muted">No students</span>';
+let ac={Present:0,Absent:0,Leave:0},raw=JSON.parse(localStorage.getItem('jkt_attendance')||'{}');Object.keys(raw).filter(inRange).forEach(d=>Object.values(raw[d]).forEach(v=>ac[v]=(ac[v]||0)+1));let atot=Object.values(ac).reduce((x,y)=>x+y,0);attendance.textContent=atot;att.innerHTML=Object.entries(ac).map(([k,v])=>k+': <b>'+v+'</b> ('+(atot?Math.round(v/atot*100):0)+'%)').join('<br>')||'No attendance';
+let statuses={Paid:0,Partial:0,Pending:0};f.filter(x=>x.status!=='Cancelled'&&inRange(x.date)).forEach(x=>statuses[x.status]=(statuses[x.status]||0)+1);feeTable.innerHTML=Object.entries(statuses).map(([k,v])=>k+': <b>'+v+'</b>').join('<br>')||'No fees';
+let ms={Gold:0,Silver:0,Bronze:0,Participation:0,Other:0};t.filter(x=>inRange(x.date)).forEach(x=>ms[x.result]=(ms[x.result]||0)+1);medals.innerHTML=Object.entries(ms).map(([k,v])=>k+': <b>'+v+'</b>').join('<br>');
+let er={Pass:0,Fail:0,Scheduled:0};e.filter(x=>inRange(x.date)).forEach(x=>er[x.result]=(er[x.result]||0)+1);exams.innerHTML=Object.entries(er).map(([k,v])=>k+': <b>'+v+'</b>').join('<br>');
+recent.innerHTML='<table class="table"><tr><th>Student</th><th>Admission</th><th>Belt</th></tr>'+s.slice().sort((x,y)=>String(y.admission_date||'').localeCompare(String(x.admission_date||''))).slice(0,8).map(x=>'<tr><td>'+esc(x.first_name+' '+(x.last_name||''))+'</td><td>'+esc(x.admission_date||'-')+'</td><td>'+esc(x.belt||'White Belt')+'</td></tr>').join('')+'</table>'}
+from.value=new Date().getFullYear()+'-01-01';to.value=new Date().toISOString().slice(0,10);render();
+</script></body></html>
