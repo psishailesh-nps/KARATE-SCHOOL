@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Certificates - Jetpur Karate Team ERP</title><link rel="stylesheet" href="assets/css/style.css">
+<style>
+.page{padding:24px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.toolbar input,.toolbar select,.form-grid input,.form-grid select,.form-grid textarea{padding:10px;border:1px solid #ddd;border-radius:8px}.toolbar input{flex:1;min-width:220px}.btn{padding:10px 15px;border:0;border-radius:8px;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:11px;border-bottom:1px solid #eee;text-align:left}.modal{display:none;position:fixed;inset:0;background:#0006;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modal-card{background:#fff;border-radius:12px;padding:22px;max-width:700px;width:100%;max-height:90vh;overflow:auto}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid textarea{grid-column:1/-1;min-height:80px}.close{float:right;background:none;border:0;font-size:22px}.actions{display:flex;gap:8px;margin-top:15px}.badge{padding:4px 9px;border-radius:999px;background:#e8f5e9}@media(max-width:650px){.form-grid{grid-template-columns:1fr}}
+</style></head>
+<body><div class="page">
+<h1>Certificates</h1><p>Create and manage printable student certificates using Local Storage.</p>
+<div class="toolbar"><input id="search" placeholder="Search certificate, student or type"><select id="filter"><option value="">All Types</option><option>Belt Promotion</option><option>Exam / Grading</option><option>Tournament Achievement</option><option>Participation</option><option>Other</option></select><button class="btn primary" onclick="openForm()">+ Create Certificate</button></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Certificate No.</th><th>Student</th><th>Type</th><th>Title</th><th>Date</th><th>Issued By</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+<div id="modal" class="modal"><div class="modal-card"><button class="close" onclick="closeForm()">×</button><h2 id="title">Create Certificate</h2>
+<form id="form"><input type="hidden" id="id"><div class="form-grid">
+<select id="student" required><option value="">Select Student *</option></select>
+<input id="number" placeholder="Certificate No. (auto)" required>
+<select id="type" required><option>Belt Promotion</option><option>Exam / Grading</option><option>Tournament Achievement</option><option>Participation</option><option>Other</option></select>
+<input id="certTitle" placeholder="Certificate Title *" required>
+<input id="date" type="date" required><input id="issuedBy" placeholder="Issued By">
+<input id="achievement" placeholder="Achievement / Belt / Position">
+<input id="place" placeholder="Place / Event">
+<textarea id="message" placeholder="Certificate description"></textarea>
+</div><div class="actions"><button class="btn primary">Save Certificate</button><button type="button" class="btn" onclick="closeForm()">Cancel</button></div></form></div></div>
+<script>
+const KEY='jkt_certificates',SK='jkt_students';
+function data(){return JSON.parse(localStorage.getItem(KEY)||'[]')}
+function students(){return JSON.parse(localStorage.getItem(SK)||'[]')}
+function name(id){let s=students().find(x=>String(x.id)===String(id));return s?s.first_name+' '+(s.last_name||''):'Unknown'}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function save(a){localStorage.setItem(KEY,JSON.stringify(a));render()}
+function render(){let q=search.value.toLowerCase(),f=filter.value,a=data().sort((x,y)=>String(y.date).localeCompare(String(x.date))).filter(x=>(!f||x.type===f)&&((x.number+' '+name(x.student_id)+' '+x.type+' '+x.title).toLowerCase().includes(q)));rows.innerHTML=a.map(x=>'<tr><td>'+esc(x.number)+'</td><td>'+esc(name(x.student_id))+'</td><td><span class="badge">'+esc(x.type)+'</span></td><td>'+esc(x.title)+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.issued_by||'-')+'</td><td><button class="btn" onclick="edit('+x.id+')">Edit</button> <button class="btn" onclick="printCert('+x.id+')">Print</button> <button class="btn danger" onclick="del('+x.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="7">No certificates found.</td></tr>'}
+function fill(){student.innerHTML='<option value="">Select Student *</option>'+students().filter(s=>s.status!=='Inactive').map(s=>'<option value="'+s.id+'">'+esc(s.student_code+' - '+name(s.id))+'</option>').join('')}
+function openForm(x){form.reset();fill();id.value=x?.id||'';title.textContent=x?'Edit Certificate':'Create Certificate';date.value=x?.date||new Date().toISOString().slice(0,10);number.value=x?.number||'CERT-'+String(data().length+1).padStart(4,'0');if(x){student.value=x.student_id;type.value=x.type;certTitle.value=x.title;issuedBy.value=x.issued_by||'';achievement.value=x.achievement||'';place.value=x.place||'';message.value=x.message||''}modal.classList.add('show')}
+function closeForm(){modal.classList.remove('show')}
+function edit(i){openForm(data().find(x=>x.id==i))}
+function del(i){if(confirm('Delete this certificate?'))save(data().filter(x=>x.id!=i))}
+form.onsubmit=e=>{e.preventDefault();let a=data(),x={id:id.value?Number(id.value):Date.now(),student_id:student.value,number:number.value.trim(),type:type.value,title:certTitle.value.trim(),date:date.value,issued_by:issuedBy.value.trim(),achievement:achievement.value.trim(),place:place.value.trim(),message:message.value.trim()};let i=a.findIndex(v=>v.id==x.id);i>=0?a[i]=x:a.push(x);save(a);closeForm()}
+function printCert(i){let x=data().find(v=>v.id==i),w=window.open('','_blank','width=1000,height=750');w.document.write('<html><head><title>'+esc(x.number)+'</title><style>@page{size:A4 landscape;margin:0}body{margin:0;font-family:Georgia,serif}.cert{width:100vw;height:100vh;box-sizing:border-box;padding:65px;text-align:center;border:18px double #333;display:flex;flex-direction:column;justify-content:center}h1{font-size:42px;margin:8px}h2{font-size:28px}.name{font-size:38px;font-weight:bold;margin:25px}.text{font-size:20px;line-height:1.6}.meta{display:flex;justify-content:space-between;margin-top:60px;font-family:Arial;font-size:14px}</style></head><body><div class="cert"><div style="font-size:18px;letter-spacing:4px">JETPUR KARATE TEAM</div><h1>CERTIFICATE</h1><h2>'+esc(x.title)+'</h2><div class="text">This certificate is proudly presented to</div><div class="name">'+esc(name(x.student_id))+'</div><div class="text">'+esc(x.message||('In recognition of '+(x.achievement||x.type)+'.'))+(x.place?' at '+esc(x.place):'')+'</div><div class="meta"><span>Date: '+esc(x.date)+'</span><span>Certificate No: '+esc(x.number)+'</span><span>Authorized Signature: __________</span></div></div><script>window.print()<\/script></body></html>');w.document.close()}
+search.oninput=render;filter.onchange=render;render();
+</script></body></html>
