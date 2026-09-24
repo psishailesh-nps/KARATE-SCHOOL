@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Attendance - Jetpur Karate Team ERP</title><link rel="stylesheet" href="assets/css/style.css">
+<style>.page{padding:24px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}.toolbar input,.toolbar select{padding:10px;border:1px solid #ddd;border-radius:8px}.toolbar input{min-width:180px}.btn{padding:10px 15px;border:0;border-radius:8px;cursor:pointer}.primary{background:#2563eb;color:#fff}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:11px;border-bottom:1px solid #eee;text-align:left}.summary{display:flex;gap:12px;flex-wrap:wrap}.card{padding:14px 20px;border:1px solid #eee;border-radius:10px;min-width:120px}.status{padding:6px 10px;border-radius:7px;border:1px solid #ddd}</style></head>
+<body><div class="page"><h1>Attendance</h1><p>Daily student attendance stored in browser Local Storage.</p>
+<div class="toolbar"><input id="date" type="date"><select id="batch"><option value="">All Batches</option></select><button class="btn primary" onclick="markAll('Present')">Mark All Present</button><button class="btn" onclick="saveDay()">Save Attendance</button></div>
+<div class="summary"><div class="card">Present: <b id="p">0</b></div><div class="card">Absent: <b id="a">0</b></div><div class="card">Leave: <b id="l">0</b></div></div><br>
+<div class="table-wrap"><table class="table"><thead><tr><th>Code</th><th>Student</th><th>Batch</th><th>Attendance</th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<script>
+const SK='jkt_students',BK='jkt_batches',AK='jkt_attendance';let rows=[];
+function init(){date.value=new Date().toISOString().slice(0,10);let bs=JSON.parse(localStorage.getItem(BK)||'[]');batch.innerHTML='<option value="">All Batches</option>'+bs.map(b=>'<option value="'+b.id+'">'+b.name+'</option>').join('');render()}
+function students(){return JSON.parse(localStorage.getItem(SK)||'[]')}
+function batches(){return JSON.parse(localStorage.getItem(BK)||'[]')}
+function render(){let all=students(),bid=batch.value;rows=all.filter(x=>!bid||String(x.batch_id||'')===String(bid));let at=JSON.parse(localStorage.getItem(AK)||'{}')[date.value]||{};document.getElementById('rows').innerHTML=rows.map(x=>'<tr><td>'+x.student_code+'</td><td>'+x.first_name+' '+(x.last_name||'')+'</td><td>'+bn(x.batch_id)+'</td><td><select class="status" data-id="'+x.id+'"><option>Present</option><option>Absent</option><option>Leave</option></select></td></tr>').join('')||'<tr><td colspan="4">No students found. Add students first.</td></tr>';document.querySelectorAll('.status').forEach(s=>s.value=at[s.dataset.id]||'Present');update()}
+function bn(id){let b=batches().find(x=>String(x.id)===String(id));return b?.name||'-'}
+function update(){let c={Present:0,Absent:0,Leave:0};document.querySelectorAll('.status').forEach(s=>c[s.value]++);p.textContent=c.Present;a.textContent=c.Absent;l.textContent=c.Leave}
+function markAll(v){document.querySelectorAll('.status').forEach(s=>s.value=v);update()}
+function saveDay(){let all=JSON.parse(localStorage.getItem(AK)||'{}');all[date.value]={};document.querySelectorAll('.status').forEach(s=>all[date.value][s.dataset.id]=s.value);localStorage.setItem(AK,JSON.stringify(all));alert('Attendance saved for '+date.value);update()}
+date.onchange=render;batch.onchange=render;document.addEventListener('change',e=>{if(e.target.classList.contains('status'))update()});init();
+</script></body></html>
