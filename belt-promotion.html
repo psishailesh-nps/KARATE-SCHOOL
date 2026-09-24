@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Belt Promotion - Jetpur Karate Team ERP</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+.page{padding:24px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}.toolbar input,.toolbar select,.form-grid input,.form-grid select,.form-grid textarea{padding:10px;border:1px solid #ddd;border-radius:8px}.toolbar input{flex:1;min-width:220px}.btn{padding:10px 15px;border:0;border-radius:8px;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:11px;border-bottom:1px solid #eee;text-align:left}.badge{padding:4px 9px;border-radius:999px}.belt{font-weight:600}.modal{display:none;position:fixed;inset:0;background:#0006;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modal-card{background:#fff;border-radius:12px;padding:22px;max-width:700px;width:100%;max-height:90vh;overflow:auto}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid textarea{grid-column:1/-1;min-height:80px}.close{float:right;background:none;border:0;font-size:22px}.actions{display:flex;gap:8px;margin-top:15px}.history{margin-top:25px}.muted{color:#666}@media(max-width:650px){.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="page">
+<h1>Belt Promotion</h1><p>Manage karate belt promotions and student belt history with Local Storage.</p>
+<div class="toolbar"><input id="search" placeholder="Search student, code or belt"><select id="beltFilter"><option value="">All Belts</option></select><button class="btn primary" onclick="openForm()">+ Promote Student</button></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>Previous Belt</th><th>New Belt</th><th>Promotion Date</th><th>Exam/Grade</th><th>Coach</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="history"><h2>Current Student Belts</h2><div class="table-wrap"><table class="table"><thead><tr><th>Code</th><th>Student</th><th>Current Belt</th><th>Last Promotion</th></tr></thead><tbody id="current"></tbody></table></div></div>
+</div>
+<div id="modal" class="modal"><div class="modal-card"><button class="close" onclick="closeForm()">×</button><h2 id="title">Promote Student</h2>
+<form id="form"><input type="hidden" id="id"><div class="form-grid">
+<select id="student" required><option value="">Select Student *</option></select>
+<select id="newBelt" required></select>
+<input id="oldBelt" placeholder="Previous Belt" readonly>
+<input id="date" type="date" required>
+<input id="exam" placeholder="Exam / Grading">
+<input id="coach" placeholder="Coach / Examiner">
+<input id="score" type="number" min="0" max="100" placeholder="Score (%)">
+<textarea id="notes" placeholder="Remarks / Notes"></textarea>
+</div><div class="actions"><button class="btn primary">Save Promotion</button><button type="button" class="btn" onclick="closeForm()">Cancel</button></div></form></div></div>
+<script>
+const PK='jkt_belt_promotions',SK='jkt_students';
+const BELTS=['White Belt','Yellow Belt','Orange Belt','Green Belt','Blue Belt','Purple Belt','Brown Belt','Black Belt'];
+function students(){return JSON.parse(localStorage.getItem(SK)||'[]')}
+function promos(){return JSON.parse(localStorage.getItem(PK)||'[]')}
+function save(a){localStorage.setItem(PK,JSON.stringify(a));render()}
+function studentName(id){let s=students().find(x=>String(x.id)===String(id));return s?s.first_name+' '+(s.last_name||''):'Unknown'}
+function beltOf(id){let s=students().find(x=>String(x.id)===String(id));return s?.belt||'White Belt'}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function render(){beltFilter.innerHTML='<option value="">All Belts</option>'+BELTS.map(b=>'<option>'+b+'</option>').join('');let q=search.value.toLowerCase(),f=beltFilter.value,a=promos().sort((x,y)=>String(y.date).localeCompare(String(x.date)));a=a.filter(x=>(!f||x.new_belt===f)&&((studentName(x.student_id)+' '+x.new_belt+' '+x.old_belt).toLowerCase().includes(q)));rows.innerHTML=a.map(x=>'<tr><td>'+esc(studentName(x.student_id))+'</td><td>'+esc(x.old_belt)+'</td><td><span class="belt">'+esc(x.new_belt)+'</span></td><td>'+esc(x.date)+'</td><td>'+esc(x.exam||'-')+(x.score!==''?' ('+esc(x.score)+'%)':'')+'</td><td>'+esc(x.coach||'-')+'</td><td><button class="btn" onclick="edit('+x.id+')">Edit</button> <button class="btn danger" onclick="del('+x.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="7">No promotion records found.</td></tr>';let ss=students();current.innerHTML=ss.map(s=>{let p=promos().filter(x=>String(x.student_id)===String(s.id)).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];return '<tr><td>'+esc(s.student_code)+'</td><td>'+esc(studentName(s.id))+'</td><td>'+esc(p?.new_belt||s.belt||'White Belt')+'</td><td>'+esc(p?.date||'-')+'</td></tr>'}).join('')||'<tr><td colspan="4">No students found.</td></tr>'}
+function fill(){student.innerHTML='<option value="">Select Student *</option>'+students().filter(s=>s.status!=='Inactive').map(s=>'<option value="'+s.id+'">'+esc(s.student_code+' - '+studentName(s.id))+'</option>').join('');newBelt.innerHTML='<option value="">Select New Belt *</option>'+BELTS.map(b=>'<option>'+b+'</option>').join('')}
+student.onchange=()=>{oldBelt.value=beltOf(student.value)}
+function openForm(x){form.reset();fill();id.value=x?.id||'';title.textContent=x?'Edit Promotion':'Promote Student';date.value=x?.date||new Date().toISOString().slice(0,10);if(x){student.value=x.student_id;oldBelt.value=x.old_belt;newBelt.value=x.new_belt;exam.value=x.exam||'';coach.value=x.coach||'';score.value=x.score??'';notes.value=x.notes||''}else if(student.value)oldBelt.value=beltOf(student.value);modal.classList.add('show')}
+function closeForm(){modal.classList.remove('show')}
+function edit(i){openForm(promos().find(x=>x.id==i))}
+function del(i){if(confirm('Delete this promotion record?'))save(promos().filter(x=>x.id!=i))}
+form.onsubmit=e=>{e.preventDefault();let a=promos(),x={id:id.value?Number(id.value):Date.now(),student_id:student.value,old_belt:oldBelt.value||beltOf(student.value),new_belt:newBelt.value,date:date.value,exam:exam.value.trim(),coach:coach.value.trim(),score:score.value,notes:notes.value.trim()};if(x.old_belt===x.new_belt){alert('New belt must be different from previous belt.');return}let i=a.findIndex(v=>v.id==x.id);i>=0?a[i]=x:a.push(x);localStorage.setItem(PK,JSON.stringify(a));let ss=students(),si=ss.findIndex(s=>String(s.id)===String(x.student_id));if(si>=0){ss[si].belt=x.new_belt;localStorage.setItem(SK,JSON.stringify(ss))}closeForm();render()}
+search.oninput=render;beltFilter.onchange=render;render();
+</script></body></html>
