@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exams & Grading - Jetpur Karate Team ERP</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+.page{padding:24px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}.toolbar input,.toolbar select,.form-grid input,.form-grid select,.form-grid textarea{padding:10px;border:1px solid #ddd;border-radius:8px}.toolbar input{flex:1;min-width:220px}.btn{padding:10px 15px;border:0;border-radius:8px;cursor:pointer}.primary{background:#2563eb;color:#fff}.danger{background:#dc2626;color:#fff}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:11px;border-bottom:1px solid #eee;text-align:left}.badge{padding:4px 9px;border-radius:999px}.pass{background:#e8f5e9}.fail{background:#ffebee}.scheduled{background:#e3f2fd}.modal{display:none;position:fixed;inset:0;background:#0006;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modal-card{background:#fff;border-radius:12px;padding:22px;max-width:720px;width:100%;max-height:90vh;overflow:auto}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid textarea{grid-column:1/-1;min-height:80px}.close{float:right;background:none;border:0;font-size:22px}.actions{display:flex;gap:8px;margin-top:15px}.summary{display:flex;gap:12px;flex-wrap:wrap}.card{padding:14px 20px;border:1px solid #eee;border-radius:10px;min-width:120px}@media(max-width:650px){.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="page">
+<h1>Exams & Grading</h1><p>Manage karate grading exams, marks and results using Local Storage.</p>
+<div class="summary"><div class="card">Total Exams<br><b id="total">0</b></div><div class="card">Passed<br><b id="passed">0</b></div><div class="card">Failed<br><b id="failed">0</b></div></div>
+<div class="toolbar"><input id="search" placeholder="Search student, exam or examiner"><select id="filter"><option value="">All Results</option><option>Scheduled</option><option>Pass</option><option>Fail</option></select><button class="btn primary" onclick="openForm()">+ Add Exam</button></div>
+<div class="table-wrap"><table class="table"><thead><tr><th>Exam</th><th>Student</th><th>Date</th><th>Current Belt</th><th>Target Belt</th><th>Marks</th><th>Result</th><th>Examiner</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+</div>
+<div id="modal" class="modal"><div class="modal-card"><button class="close" onclick="closeForm()">×</button><h2 id="title">Add Exam</h2>
+<form id="form"><input type="hidden" id="id"><div class="form-grid">
+<input id="examName" placeholder="Exam Name *" required><select id="student" required><option value="">Select Student *</option></select>
+<input id="date" type="date" required><input id="examiner" placeholder="Examiner / Coach">
+<select id="currentBelt"><option value="">Current Belt</option></select><select id="targetBelt"><option value="">Target Belt</option></select>
+<input id="marks" type="number" min="0" max="100" step="0.01" placeholder="Marks (%)">
+<select id="result"><option>Scheduled</option><option>Pass</option><option>Fail</option></select>
+<input id="strength" type="number" min="0" max="10" step=".1" placeholder="Strength / Fitness (0-10)">
+<input id="technique" type="number" min="0" max="10" step=".1" placeholder="Technique (0-10)">
+<input id="discipline" type="number" min="0" max="10" step=".1" placeholder="Discipline (0-10)">
+<textarea id="remarks" placeholder="Remarks / Feedback"></textarea>
+</div><div class="actions"><button class="btn primary">Save Exam</button><button type="button" class="btn" onclick="closeForm()">Cancel</button></div></form></div></div>
+<script>
+const KEY='jkt_exams',SK='jkt_students',BELTS=['White Belt','Yellow Belt','Orange Belt','Green Belt','Blue Belt','Purple Belt','Brown Belt','Black Belt'];
+function students(){return JSON.parse(localStorage.getItem(SK)||'[]')}
+function data(){return JSON.parse(localStorage.getItem(KEY)||'[]')}
+function studentName(id){let s=students().find(x=>String(x.id)===String(id));return s?s.first_name+' '+(s.last_name||''):'Unknown'}
+function belt(id){let s=students().find(x=>String(x.id)===String(id));return s?.belt||'White Belt'}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function save(a){localStorage.setItem(KEY,JSON.stringify(a));render()}
+function render(){let a=data(),q=search.value.toLowerCase(),f=filter.value;a.sort((x,y)=>String(y.date).localeCompare(String(x.date)));let list=a.filter(x=>(!f||x.result===f)&&((x.exam_name+' '+studentName(x.student_id)+' '+(x.examiner||'')).toLowerCase().includes(q)));total.textContent=a.length;passed.textContent=a.filter(x=>x.result==='Pass').length;failed.textContent=a.filter(x=>x.result==='Fail').length;rows.innerHTML=list.map(x=>'<tr><td>'+esc(x.exam_name)+'</td><td>'+esc(studentName(x.student_id))+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.current_belt)+'</td><td>'+esc(x.target_belt||'-')+'</td><td>'+esc(x.marks===''?'-':x.marks+'%')+'</td><td><span class="badge '+x.result.toLowerCase()+'">'+x.result+'</span></td><td>'+esc(x.examiner||'-')+'</td><td><button class="btn" onclick="edit('+x.id+')">Edit</button> <button class="btn" onclick="report('+x.id+')">Report</button> <button class="btn danger" onclick="del('+x.id+')">Delete</button></td></tr>').join('')||'<tr><td colspan="9">No exam records found.</td></tr>'}
+function fill(){student.innerHTML='<option value="">Select Student *</option>'+students().filter(s=>s.status!=='Inactive').map(s=>'<option value="'+s.id+'">'+esc(s.student_code+' - '+studentName(s.id))+'</option>').join('');currentBelt.innerHTML='<option value="">Current Belt</option>'+BELTS.map(b=>'<option>'+b+'</option>').join('');targetBelt.innerHTML='<option value="">Target Belt</option>'+BELTS.map(b=>'<option>'+b+'</option>').join('')}
+student.onchange=()=>currentBelt.value=belt(student.value);
+function openForm(x){form.reset();fill();id.value=x?.id||'';title.textContent=x?'Edit Exam':'Add Exam';date.value=x?.date||new Date().toISOString().slice(0,10);if(x){examName.value=x.exam_name;student.value=x.student_id;currentBelt.value=x.current_belt;targetBelt.value=x.target_belt||'';examiner.value=x.examiner||'';marks.value=x.marks??'';result.value=x.result;strength.value=x.strength??'';technique.value=x.technique??'';discipline.value=x.discipline??'';remarks.value=x.remarks||''}else if(student.value)currentBelt.value=belt(student.value);modal.classList.add('show')}
+function closeForm(){modal.classList.remove('show')}
+function edit(i){openForm(data().find(x=>x.id==i))}
+function del(i){if(confirm('Delete this exam record?'))save(data().filter(x=>x.id!=i))}
+form.onsubmit=e=>{e.preventDefault();let a=data(),m=marks.value===''?'':Number(marks.value),x={id:id.value?Number(id.value):Date.now(),exam_name:examName.value.trim(),student_id:student.value,date:date.value,examiner:examiner.value.trim(),current_belt:currentBelt.value||belt(student.value),target_belt:targetBelt.value,marks:m,result:result.value,strength:strength.value,technique:technique.value,discipline:discipline.value,remarks:remarks.value.trim()};if(m!==''&&result.value==='Scheduled')x.result=m>=50?'Pass':'Fail';let i=a.findIndex(v=>v.id==x.id);i>=0?a[i]=x:a.push(x);localStorage.setItem(KEY,JSON.stringify(a));closeForm();render()}
+function report(i){let x=data().find(v=>v.id==i),w=window.open('','_blank','width=700,height=800');w.document.write('<html><head><title>Exam Report</title><style>body{font-family:Arial;padding:35px}h1,h2{text-align:center}table{width:100%;border-collapse:collapse}td{padding:10px;border-bottom:1px solid #ddd}.r{text-align:right}</style></head><body><h1>JETPUR KARATE TEAM</h1><h2>EXAM / GRADING REPORT</h2><table><tr><td>Exam</td><td class="r">'+esc(x.exam_name)+'</td></tr><tr><td>Student</td><td class="r">'+esc(studentName(x.student_id))+'</td></tr><tr><td>Date</td><td class="r">'+esc(x.date)+'</td></tr><tr><td>Current Belt</td><td class="r">'+esc(x.current_belt)+'</td></tr><tr><td>Target Belt</td><td class="r">'+esc(x.target_belt||'-')+'</td></tr><tr><td>Marks</td><td class="r">'+esc(x.marks===''?'-':x.marks+'%')+'</td></tr><tr><td>Result</td><td class="r">'+esc(x.result)+'</td></tr><tr><td>Strength / Fitness</td><td class="r">'+esc(x.strength||'-')+'/10</td></tr><tr><td>Technique</td><td class="r">'+esc(x.technique||'-')+'/10</td></tr><tr><td>Discipline</td><td class="r">'+esc(x.discipline||'-')+'/10</td></tr><tr><td>Examiner</td><td class="r">'+esc(x.examiner||'-')+'</td></tr></table><h3>Remarks</h3><p>'+esc(x.remarks||'No remarks')+'</p><p style="margin-top:70px">Examiner Signature: __________________</p><script>window.print()<\/script></body></html>');w.document.close()}
+search.oninput=render;filter.onchange=render;render();
+</script></body></html>
